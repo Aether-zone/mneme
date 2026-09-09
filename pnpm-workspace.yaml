@@ -1,0 +1,14 @@
+packages:
+  # Both are applications rather than libraries, so they sit at the top level
+  # rather than under `packages/` — the same arrangement as akouo and pistis.
+  - 'api'
+  - 'web'
+
+# pnpm 10 runs no dependency lifecycle scripts unless they are named here.
+onlyBuiltDependencies:
+  - '@swc/core'
+  - esbuild
+  # Backs `nest start --watch`; without its build step pnpm warns on every
+  # install and the watcher falls back to polling.
+  - '@parcel/watcher'
+  - unrs-resolver
