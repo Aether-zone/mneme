@@ -5,55 +5,100 @@ import {
   CardHeader,
   CardTitle,
 } from '@aether-zone/kosmos';
+import { Suspense } from 'react';
 
+import { searchMemory } from '@/lib/memory';
 import { activeOrganization } from '@/lib/organizations';
 
+import { SearchForm } from './search-form';
+import { SearchResults } from './search-results';
+
 /**
- * The overview.
+ * Searching what the workspace remembers.
  *
- * mneme has no domain yet — this is the scaffold, signed in and scoped to an
- * organization, with nothing to show behind it. The page says so rather than
- * pretending: an empty console that looks finished is worse than one that
- * names what is missing.
+ * The query lives in the URL rather than in component state, so a search is
+ * linkable and survives a reload — and the whole page is a server component,
+ * which means the access token never leaves the server.
  */
-export default async function OverviewPage() {
+export default async function SearchPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
+  const query = q?.trim() ?? '';
   const organization = await activeOrganization();
 
   return (
     <div className="flex flex-col gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {organization ? organization.name : 'No organization'}
-          </CardTitle>
-          <CardDescription>
-            {organization
-              ? 'Everything below is scoped to this organization. Switch it in the sidebar.'
-              : 'You are signed in but belong to no organization. Ask an owner to add you in pistis.'}
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      {/* `useSearchParams` in the form opts its subtree into client-side
+          rendering, which Next requires a boundary for. */}
+      <Suspense fallback={<div className="h-9" />}>
+        <SearchForm />
+      </Suspense>
 
+      {!organization ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>No organization</CardTitle>
+            <CardDescription>
+              You are signed in but belong to no organization, and memory is
+              scoped to one. Ask an owner to add you in pistis.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      ) : query ? (
+        <Results query={query} />
+      ) : (
+        <Empty organizationName={organization.name} />
+      )}
+    </div>
+  );
+}
+
+async function Results({ query }: { query: string }) {
+  const result = await searchMemory(query);
+
+  if (!result.ok) {
+    /*
+     * Reasons rather than a status code, so the copy can say what to do about
+     * it. `unavailable` is the one worth distinguishing: the api being down
+     * looks exactly like an empty memory if both render "nothing found".
+     */
+    return (
       <Card>
         <CardHeader>
-          <CardTitle>Nothing here yet</CardTitle>
+          <CardTitle>That search did not run</CardTitle>
           <CardDescription>
-            The console is wired end to end — sign-in through pistis, the shared
-            chrome, an api client that scopes every request to the organization
-            above. What it does not have is anything to remember.
+            {result.reason === 'unavailable'
+              ? 'The mneme api did not answer. It may be starting, or stopped.'
+              : (result.body?.message ??
+                'Something went wrong running that search.')}
           </CardDescription>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          <p>
-            The api answers on{' '}
-            <span className="font-mono text-foreground">:3130</span> with
-            organon&rsquo;s health probes and pistis token verification, and no
-            routes of its own. The first domain module goes there; the screen
-            for it goes beside this page, and its entry goes in{' '}
-            <span className="font-mono text-foreground">nav.tsx</span>.
-          </p>
-        </CardContent>
       </Card>
-    </div>
+    );
+  }
+
+  return <SearchResults hits={result.data.results} />;
+}
+
+function Empty({ organizationName }: { organizationName: string }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{organizationName}</CardTitle>
+        <CardDescription>
+          Everything {organizationName} has announced is searchable here.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="text-sm text-muted-foreground">
+        <p>
+          mneme listens to the same events arachni does: a meeting created in
+          akouo, a file stored in loculus. Nobody uploads anything here — it
+          fills up on its own, and this box asks it what it has.
+        </p>
+      </CardContent>
+    </Card>
   );
 }

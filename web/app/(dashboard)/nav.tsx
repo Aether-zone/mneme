@@ -19,11 +19,11 @@ const svg = {
   'aria-hidden': true,
 } as const;
 
-function OverviewIcon() {
+function SearchIcon() {
   return (
     <svg {...svg}>
-      <circle cx="12" cy="10" r="6" />
-      <path d="M9.5 15.5 8 21M14.5 15.5 16 21M9.5 10h5" />
+      <circle cx="11" cy="11" r="7" />
+      <path d="m16 16 5 5" />
     </svg>
   );
 }
@@ -35,13 +35,13 @@ export type NavItem = {
 };
 
 /**
- * One entry, because mneme is one screen so far.
+ * One entry, because mneme is one screen.
  *
  * The rail matches akouo's and loculus's chrome rather than being earned by the
  * number of destinations; a second entry appears when there is a second screen.
  */
 export const NAV_ITEMS: NavItem[] = [
-  { href: '/', label: 'Overview', icon: <OverviewIcon /> },
+  { href: '/', label: 'Search', icon: <SearchIcon /> },
 ];
 
 /** Exact match for the index route, prefix match for the rest. */
