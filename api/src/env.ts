@@ -31,6 +31,31 @@ export const envSchema = baseEnvSchema.extend({
   OAUTH_JWKS_URI: z.url().optional(),
 
   /*
+   * mneme's *own* identity, which is a different thing from the two above.
+   *
+   * Those make mneme a resource server — it verifies tokens other people
+   * present. These make it a client: indexing an uploaded object means reading
+   * that object out of loculus, and that read happens long after the request
+   * that caused it, with nobody's token to borrow. So mneme presents its own.
+   *
+   * Optional, and absent the object listener cannot fetch anything — it says so
+   * per message rather than refusing to boot, because search and the HTTP
+   * ingest path work perfectly well without loculus.
+   */
+  OAUTH_CLIENT_ID: z.string().min(1).optional(),
+  OAUTH_CLIENT_SECRET: z.string().min(1).optional(),
+  /** pistis's token endpoint. Derived from the issuer when unset. */
+  OAUTH_TOKEN_URI: z.url().optional(),
+
+  /** Origin of the loculus api. Internal: mneme reaches it server to server. */
+  LOCULUS_URL: z.url().default('http://localhost:3111'),
+  /**
+   * How long to wait for loculus to sign a URL, in milliseconds. Not the budget
+   * for reading the object itself, which is as long as the object is large.
+   */
+  LOCULUS_TIMEOUT_MS: z.coerce.number().int().positive().default(5_000),
+
+  /*
    * Qdrant, where the embedded chunks live. The workspace compose file
    * publishes it on 6343 — 6333 is the container's port, remapped because the
    * default is commonly taken.

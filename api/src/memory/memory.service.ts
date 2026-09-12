@@ -1,4 +1,8 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+
+import { EventPublisher, type AetherEvent } from '@aether-zone/organon';
+
 import { uuidV5 } from './uuid';
 
 import { TEXT_SPLITTER, type TextSplitter } from './chunk';
@@ -6,6 +10,17 @@ import {
   EMBEDDING_PROVIDER,
   type EmbeddingProvider,
 } from './embedding.provider';
+import {
+  MEMORY_FORGOTTEN,
+  MEMORY_INDEXED,
+  MNEME_SOURCE,
+} from './memory.events';
+import {
+  memoryIri,
+  toMemoryDocument,
+  type MemoryJsonLD,
+  type RememberedChunk,
+} from './memory.json-ld';
 import {
   VECTOR_REPOSITORY,
   type SearchOptions,
@@ -47,6 +62,7 @@ export class MemoryService {
     @Inject(VECTOR_REPOSITORY)
     private readonly vectors: VectorRepository,
     @Inject(TEXT_SPLITTER) private readonly splitter: TextSplitter,
+    private readonly events: EventPublisher,
   ) {}
 
   /**
@@ -80,6 +96,13 @@ export class MemoryService {
 
       this.logger.debug(`${resourceUri} has no indexable text; forgot it`);
 
+      /*
+       * Announced as a deletion, not as a memory of nothing. A resource edited
+       * down to empty stops answering searches, and a graph still holding its
+       * chunks would keep offering passages that can never be recalled.
+       */
+      await this.announceForgotten(organizationId, resourceUri);
+
       return { resourceUri, chunks: 0 };
     }
 
@@ -107,6 +130,8 @@ export class MemoryService {
       `Remembered ${resourceUri} as ${chunks.length} chunk(s) for ${organizationId}`,
     );
 
+    await this.announceIndexed(organizationId, resourceUri, chunks);
+
     return { resourceUri, chunks: chunks.length };
   }
 
@@ -130,13 +155,94 @@ export class MemoryService {
     await this.vectors.deleteResource(organizationId, resourceUri);
 
     this.logger.log(`Forgot ${resourceUri} for ${organizationId}`);
+
+    await this.announceForgotten(organizationId, resourceUri);
+  }
+
+  /**
+   * Tells the workspace what mneme now remembers of a resource.
+   *
+   * Published from here rather than from the three callers — the event
+   * listener, the object listener, the ingest endpoint — because this is the
+   * one place that knows what was actually written. A caller-side announcement
+   * would have to guess, and would be wrong for the path that indexes nothing.
+   *
+   * The chunks travel *inside* the document, which is what makes them
+   * `PART_OF` the memory in arachni's graph: forgetting the resource takes them
+   * with it, and re-indexing a document that got shorter prunes the ones it no
+   * longer has. Both are arachni's ownership rule doing the work, and neither
+   * happens if the chunks are published as separate events.
+   */
+  private async announceIndexed(
+    organizationId: string,
+    resourceUri: string,
+    chunks: RememberedChunk[],
+  ): Promise<void> {
+    const time = new Date().toISOString();
+
+    await this.announce(
+      {
+        id: randomUUID(),
+        source: MNEME_SOURCE,
+        time,
+        subject: memoryIri(organizationId, resourceUri),
+        organizationId,
+        type: 'aether:ResourceCreated',
+        data: toMemoryDocument(organizationId, resourceUri, chunks, time),
+      },
+      MEMORY_INDEXED,
+    );
+  }
+
+  private async announceForgotten(
+    organizationId: string,
+    resourceUri: string,
+  ): Promise<void> {
+    await this.announce(
+      {
+        id: randomUUID(),
+        source: MNEME_SOURCE,
+        time: new Date().toISOString(),
+        subject: memoryIri(organizationId, resourceUri),
+        organizationId,
+        type: 'aether:ResourceDeleted',
+      },
+      MEMORY_FORGOTTEN,
+    );
+  }
+
+  /**
+   * The write already happened; the event is what tells anybody else.
+   *
+   * So a broker that will not take it does not undo the index — the chunks are
+   * searchable either way, and failing the caller here would turn a messaging
+   * problem into a lost document. Logged loudly instead, with the reason in the
+   * message: organon 0.5.0 keeps only string trailing arguments, so a cause
+   * passed as one is silently dropped. Fixed in 0.5.1 — see
+   * `ObjectUploadedListener` for what changes once this service is on it.
+   *
+   * What is lost is arachni's view of it until the resource is next indexed.
+   * The honest fix is an outbox — write the event beside the chunks and let a
+   * relay publish it — which is a larger change than these events warrant, and
+   * this comment is where to start it.
+   */
+  private async announce(
+    event: AetherEvent<MemoryJsonLD>,
+    routingKey: string,
+  ): Promise<void> {
+    try {
+      await this.events.publish(routingKey, event);
+    } catch (cause) {
+      const reason = cause instanceof Error ? cause.message : String(cause);
+
+      this.logger.error(
+        `"${event.subject}" changed but "${routingKey}" could not be published: ${reason}`,
+      );
+    }
   }
 
   /** What is remembered of one resource, in order. */
-  recall(
-    organizationId: string,
-    resourceUri: string,
-  ): Promise<StoredChunk[]> {
+  recall(organizationId: string, resourceUri: string): Promise<StoredChunk[]> {
     return this.vectors.findByResource(organizationId, resourceUri);
   }
 }

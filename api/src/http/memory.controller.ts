@@ -46,7 +46,7 @@ export class MemoryController {
   constructor(
     private readonly memory: MemoryService,
     private readonly extractors: ExtractorRegistry,
-  ) {}
+  ) { }
 
   /** The passages closest to a question. */
   @Get('search')
@@ -54,10 +54,14 @@ export class MemoryController {
     @CurrentActor() actor: Actor,
     @Query(new ZodValidationPipe(searchQuerySchema)) query: SearchQuery,
   ) {
+    console.log('searching for: ', actor);
+    console.log('query:', query);
     const results = await this.memory.search(actor.organizationId, query.q, {
       limit: query.limit,
       minSimilarity: query.minSimilarity,
     });
+
+    console.log('results', results);
 
     return {
       query: query.q,
