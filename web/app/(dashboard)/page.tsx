@@ -58,7 +58,7 @@ export default async function SearchPage({
 
 async function Results({ query }: { query: string }) {
   const result = await searchMemory(query);
-
+  console.log(result);
   if (!result.ok) {
     /*
      * Reasons rather than a status code, so the copy can say what to do about

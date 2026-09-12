@@ -1,3 +1,4 @@
+export * from './extract.module';
 export * from './extractor';
 export * from './extractor.registry';
 export * from './json.extractor';

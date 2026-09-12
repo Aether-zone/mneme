@@ -6,6 +6,7 @@ import {
   type JsonLdDocument,
 } from '@aether-zone/organon';
 
+import { MNEME_SOURCE } from '../memory/memory.events';
 import { MemoryService } from '../memory/memory.service';
 
 import { documentToText } from './json-ld.text';
@@ -79,6 +80,25 @@ export class AetherEventListener {
     }
 
     const event = parsed.data;
+
+    /*
+     * mneme's own announcements, dropped before anything else looks at them.
+     *
+     * **This is a runaway loop, not a slow one.** mneme publishes a memory of
+     * every resource it indexes, and this subscription is bound to `#` — so
+     * without this, indexing a meeting announces a memory, which arrives here,
+     * which is indexed as a resource in its own right, which announces a memory
+     * of the memory, and so on until something falls over. Each turn writes
+     * chunks and embeds text, so it is expensive from the first iteration.
+     *
+     * By `source` rather than by routing key or by `@type`: the key says only
+     * which binding matched, and a type check would have to be updated for
+     * every kind of document mneme learns to publish. The producer is the fact
+     * that matters — mneme has nothing to learn from its own reading.
+     */
+    if (event.source === MNEME_SOURCE) {
+      return undefined;
+    }
 
     /*
      * Which tenant's memory this belongs in. An event without one cannot be

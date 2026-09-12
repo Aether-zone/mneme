@@ -22,10 +22,25 @@ export class ExtractorRegistry {
     @Inject(EXTRACTORS) private readonly extractors: Extractor[],
   ) {}
 
-  for(contentType: string): Extractor {
-    const extractor = this.extractors.find((candidate) =>
-      candidate.supports(contentType),
+  /**
+   * The extractor for a content type, or `null` where there is none.
+   *
+   * For callers to whom an unreadable type is not an error. The object listener
+   * is the one that matters: the bucket holds every service's uploads, most of
+   * them audio and PDFs mneme has no reader for, and being told about one is
+   * the ordinary case rather than a fault. {@link for} is the answer for a
+   * caller who *asked* mneme to read something and deserves to be told it
+   * cannot.
+   */
+  find(contentType: string): Extractor | null {
+    return (
+      this.extractors.find((candidate) => candidate.supports(contentType)) ??
+      null
     );
+  }
+
+  for(contentType: string): Extractor {
+    const extractor = this.find(contentType);
 
     if (!extractor) {
       throw new UnsupportedMediaTypeException(

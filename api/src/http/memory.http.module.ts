@@ -1,37 +1,23 @@
 import { DynamicModule, Module, type ModuleMetadata } from '@nestjs/common';
 
-import { ExtractorRegistry, EXTRACTORS } from '../extract/extractor.registry';
-import { JsonExtractor } from '../extract/json.extractor';
-import { TextExtractor } from '../extract/text.extractor';
+import { ExtractModule } from '../extract/extract.module';
 
 import { MemoryController } from './memory.controller';
 
 /**
- * The HTTP surface, and the extractors the ingest endpoint reads bodies with.
+ * The HTTP surface.
  *
- * Order in {@link EXTRACTORS} is precedence — the registry takes the first
- * that claims a content type.
+ * The extractors the ingest endpoint reads bodies with come from
+ * {@link ExtractModule}, shared with the object listener so that both paths
+ * read the same set of content types.
  */
 @Module({})
 export class MemoryHttpModule {
   static register(imports: ModuleMetadata['imports']): DynamicModule {
     return {
       module: MemoryHttpModule,
-      imports,
+      imports: [...(imports ?? []), ExtractModule],
       controllers: [MemoryController],
-      providers: [
-        TextExtractor,
-        JsonExtractor,
-        {
-          provide: EXTRACTORS,
-          useFactory: (text: TextExtractor, json: JsonExtractor) => [
-            text,
-            json,
-          ],
-          inject: [TextExtractor, JsonExtractor],
-        },
-        ExtractorRegistry,
-      ],
     };
   }
 }

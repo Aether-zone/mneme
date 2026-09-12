@@ -33,7 +33,7 @@ export class QdrantVectorRepository implements VectorRepository {
   constructor(
     private readonly client: QdrantClient,
     private readonly collection: string,
-  ) {}
+  ) { }
 
   /**
    * Creates the collection if it is missing, and refuses to use one whose
@@ -78,8 +78,8 @@ export class QdrantVectorRepository implements VectorRepository {
     if (size !== undefined && size !== dimensions) {
       throw new Error(
         `Collection "${this.collection}" stores ${size}-dimension vectors, but ${model} produces ${dimensions}. ` +
-          'Vectors from two models are not comparable, so this is a re-index rather than a migration: ' +
-          'drop the collection and let mneme rebuild it, or point MNEME_COLLECTION at a new one.',
+        'Vectors from two models are not comparable, so this is a re-index rather than a migration: ' +
+        'drop the collection and let mneme rebuild it, or point MNEME_COLLECTION at a new one.',
       );
     }
   }
@@ -174,6 +174,8 @@ export class QdrantVectorRepository implements VectorRepository {
       with_payload: true,
       with_vector: false,
     });
+
+    console.log('points: ', points);
 
     return points.map((point) => ({
       chunk: this.toChunk(point),
