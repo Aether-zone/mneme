@@ -1,0 +1,54 @@
+# compiled output
+dist
+tmp
+out-tsc
+
+# dependencies
+node_modules
+
+# IDEs and editors
+/.idea
+.project
+.classpath
+*.launch
+.settings/
+*.sublime-workspace
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# misc
+/coverage
+npm-debug.log
+yarn-error.log
+
+# Local environment. `*.example` files are committed as documentation; the real
+# ones hold machine-specific ports and secrets.
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# System Files
+.DS_Store
+Thumbs.db
+
+.claude/worktrees
+.claude/settings.local.json
+
+# Next.js
+.next
+out
+
+# TypeScript's incremental build cache; `tsc --noEmit` writes one beside the
+# tsconfig that asked for it.
+*.tsbuildinfo
+
+# NOTE: `.npmrc` is deliberately *not* ignored. Its settings are recorded in
+# pnpm-lock.yaml, so a clone without it fails `--frozen-lockfile` with
+# ERR_PNPM_LOCKFILE_CONFIG_MISMATCH. It holds no credentials — the
+# @aether-zone packages are public on npmjs.

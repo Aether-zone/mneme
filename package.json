@@ -1,0 +1,15 @@
+{
+  "name": "@mneme/source",
+  "version": "0.0.0",
+  "license": "MIT",
+  "private": true,
+  "packageManager": "pnpm@10.15.0",
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r --parallel typecheck",
+    "lint": "pnpm -r --parallel lint",
+    "test": "pnpm -r --parallel test",
+    "start:server": "PORT=${PORT:-3130} pnpm --filter @mneme/api start:dev",
+    "start:web": "PORT=${PORT:-3131} pnpm --filter @mneme/web dev"
+  }
+}
